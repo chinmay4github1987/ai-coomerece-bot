@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support Escalations</title>
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --text:#1c2230; --muted:#667085; --line:#e3e6eb; --accent:#2f5bea;
+          --pass:#1a7f4b; --fail:#c0362c; --failbg:#fdecea; --bot:#eef1f6; --human:#e8f6ee; --cust:#e7edff; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151c; --panel:#1b1f29; --text:#e6e8ee; --muted:#9aa3b2; --line:#2b3140; --accent:#6d8cff;
+            --pass:#4cc38a; --fail:#ff7b72; --failbg:#3b1e1c; --bot:#252b38; --human:#1f3528; --cust:#232c47; }
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
+  header { padding:12px 16px; border-bottom:1px solid var(--line); background:var(--panel); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  h1 { font-size:17px; margin:0; margin-right:auto; }
+  h2 { font-size:15px; margin:0 0 8px; }
+  input, textarea { font:inherit; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--panel); color:var(--text); }
+  button { font:inherit; padding:8px 14px; border-radius:8px; border:0; background:var(--accent); color:#fff; cursor:pointer; }
+  button.secondary { background:transparent; color:var(--text); border:1px solid var(--line); }
+  .layout { display:grid; grid-template-columns:320px 1fr; gap:16px; padding:16px; }
+  @media (max-width:820px) { .layout { grid-template-columns:1fr; } }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px; min-width:0; }
+  .queue { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  .queue button { width:100%; text-align:left; background:transparent; color:var(--text); border:1px solid var(--line); display:block; }
+  .queue button[aria-current="true"] { border-color:var(--accent); outline:1px solid var(--accent); }
+  .meta { color:var(--muted); font-size:12px; }
+  .chip { display:inline-block; font-size:11px; font-weight:600; letter-spacing:.02em; padding:1px 8px; border-radius:999px;
+          background:var(--failbg); color:var(--fail); margin:4px 4px 0 0; }
+  .transcript { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+  .msg { padding:8px 12px; border-radius:10px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .msg small { display:block; color:var(--muted); font-size:12px; }
+  .customer { background:var(--cust); } .bot { background:var(--bot); } .human { background:var(--human); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  .pass { color:var(--pass); font-weight:600; } .fail { color:var(--fail); font-weight:600; }
+  .draft { border-left:3px solid var(--fail); padding:8px 12px; background:var(--failbg); border-radius:6px; white-space:pre-wrap; }
+  pre { background:var(--bg); padding:10px; border-radius:8px; overflow:auto; font-size:12px; margin:0; }
+  section + section { margin-top:18px; }
+  .row { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .row textarea { flex:1; min-width:200px; min-height:70px; }
+  .empty { color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Support Escalations</h1>
+  <label for="token" class="meta">Support token</label>
+  <input id="token" type="password" autocomplete="off" placeholder="SUPPORT_TOKEN">
+  <button id="save" class="secondary">Connect</button>
+  <label class="meta"><input type="checkbox" id="showResolved"> Show resolved</label>
+</header>
+<div class="layout">
+  <div class="panel">
+    <h2>Queue</h2>
+    <p id="queueMsg" class="empty">Enter the support token to load escalations.</p>
+    <ul id="queue" class="queue"></ul>
+  </div>
+  <div class="panel" id="detail"><p class="empty">Select an escalation.</p></div>
+</div>
+<script>
+const TOKEN_KEY = "support-token";
+let token = "", selected = null;
+try { token = sessionStorage.getItem(TOKEN_KEY) || ""; } catch {}
+const $ = (id) => document.getElementById(id);
+$("token").value = token;
+
+function el(tag, props = {}, ...children) {
+  const node = Object.assign(document.createElement(tag), props);
+  node.append(...children.filter((c) => c !== null && c !== undefined));
+  return node;
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(path, { ...options, headers: { "Content-Type": "application/json", "X-Support-Token": token, ...(options.headers || {}) } });
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+  return res.json();
+}
+
+async function loadQueue() {
+  if (!token) return;
+  try {
+    const status = $("showResolved").checked ? "" : "open";
+    const items = await api("/api/escalations?status=" + status);
+    $("queueMsg").textContent = items.length ? "" : "No escalations.";
+    $("queue").replaceChildren(...items.map((e) => {
+      const btn = el("button", { type: "button", onclick: () => select(e.id) },
+        el("strong", { textContent: e.id }), " ",
+        el("span", { className: "meta", textContent: e.status + " · " + new Date(e.created_at).toLocaleString() }),
+        el("div", {}, ...e.flags.map((f) => el("span", { className: "chip", textContent: f }))));
+      btn.setAttribute("aria-current", String(e.id === selected));
+      return el("li", {}, btn);
+    }));
+  } catch (err) { $("queueMsg").textContent = "Could not load queue: " + err.message; }
+}
+
+async function select(id) {
+  selected = id;
+  loadQueue();
+  let d;
+  try { d = await api("/api/escalations/" + encodeURIComponent(id)); }
+  catch (err) { $("detail").replaceChildren(el("p", { className: "empty", textContent: err.message })); return; }
+
+  const LABELS = { customer: "Customer", bot: "Assistant", human: "Support team" };
+  const transcript = el("div", { className: "transcript" }, ...d.conversation.transcript.map((m) =>
+    el("div", { className: "msg " + m.role }, el("small", { textContent: (LABELS[m.role] || m.role) + " · " + new Date(m.at).toLocaleTimeString() }), m.text)));
+
+  const evalRows = d.evals.map((r) => el("tr", {},
+    el("td", { textContent: r.name }),
+    el("td", { className: r.passed ? "pass" : "fail", textContent: r.passed ? "PASS" : "FAIL" }),
+    el("td", { textContent: r.flag || "" }),
+    el("td", { textContent: r.detail })));
+
+  const reply = el("textarea", { placeholder: "Reply to the customer", maxLength: 4000 });
+  const open = d.status === "open";
+  const actions = open ? el("div", { className: "row" }, reply,
+    el("button", { type: "button", textContent: "Send reply", onclick: async () => {
+      if (!reply.value.trim()) return;
+      await api(`/api/escalations/${id}/reply`, { method: "POST", body: JSON.stringify({ message: reply.value }) });
+      select(id);
+    } }),
+    el("button", { type: "button", className: "secondary", textContent: "Resolve & hand back to assistant", onclick: async () => {
+      await api(`/api/escalations/${id}/resolve`, { method: "POST" });
+      select(id);
+    } })) : el("p", { className: "meta", textContent: "Resolved " + new Date(d.resolved_at).toLocaleString() });
+
+  $("detail").replaceChildren(
+    el("section", {}, el("h2", { textContent: d.id }), el("div", {}, ...d.flags.map((f) => el("span", { className: "chip", textContent: f })))),
+    el("section", {}, el("h2", { textContent: "Eval results" }),
+      el("table", {}, el("thead", {}, el("tr", {}, ...["Eval", "Result", "Flag", "Detail"].map((h) => el("th", { textContent: h })))), el("tbody", {}, ...evalRows))),
+    el("section", {}, el("h2", { textContent: "Withheld agent draft" }),
+      d.agent_draft ? el("div", { className: "draft", textContent: d.agent_draft }) : el("p", { className: "empty", textContent: "No draft produced." })),
+    el("section", {}, el("h2", { textContent: "Conversation" }), transcript, actions),
+    el("section", {}, el("h2", { textContent: "Order state" }),
+      el("pre", { textContent: JSON.stringify({ verified_orders: d.verified_orders, eligibility: d.eligibility, returns: d.returns }, null, 2) })),
+  );
+}
+
+$("save").onclick = () => {
+  token = $("token").value.trim();
+  try { sessionStorage.setItem(TOKEN_KEY, token); } catch {}
+  loadQueue();
+};
+$("showResolved").onchange = loadQueue;
+setInterval(() => { loadQueue(); }, 5000);
+loadQueue();
+</script>
+</body>
+</html>

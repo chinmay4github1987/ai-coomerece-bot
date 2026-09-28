@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Returns Help</title>
+<style>
+  :root { --bg:#f5f6f8; --panel:#fff; --text:#1c2230; --muted:#667085; --line:#e3e6eb;
+          --accent:#2f5bea; --bot:#eef1f6; --human:#e8f6ee; --warn:#fff4e0; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#12151c; --panel:#1b1f29; --text:#e6e8ee; --muted:#9aa3b2; --line:#2b3140;
+            --accent:#6d8cff; --bot:#252b38; --human:#1f3528; --warn:#3a2f1a; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background:var(--bg); color:var(--text); }
+  main { max-width:720px; margin:0 auto; padding:16px; height:100dvh; display:flex; flex-direction:column; gap:12px; }
+  header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  h1 { font-size:18px; margin:0; }
+  .status { font-size:13px; color:var(--muted); }
+  .status.escalated { color:var(--text); background:var(--warn); padding:2px 10px; border-radius:999px; }
+  #log { flex:1; overflow-y:auto; background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px;
+         display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:85%; padding:10px 14px; border-radius:12px; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .msg small { display:block; font-size:12px; color:var(--muted); margin-bottom:2px; }
+  .customer { align-self:flex-end; background:var(--accent); color:#fff; }
+  .customer small { color:rgba(255,255,255,.8); }
+  .bot { align-self:flex-start; background:var(--bot); }
+  .human { align-self:flex-start; background:var(--human); }
+  .hint { color:var(--muted); font-size:14px; }
+  form { display:flex; gap:8px; }
+  textarea { flex:1; resize:none; font:inherit; padding:10px 12px; border-radius:10px; border:1px solid var(--line);
+             background:var(--panel); color:var(--text); min-height:44px; }
+  button { font:inherit; padding:0 18px; border-radius:10px; border:0; background:var(--accent); color:#fff; cursor:pointer; min-height:44px; }
+  button:disabled { opacity:.5; cursor:default; }
+  .link { background:none; color:var(--muted); padding:0; min-height:0; text-decoration:underline; font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Returns Help</h1>
+    <div style="display:flex; gap:12px; align-items:center">
+      <span id="status" class="status">Assistant</span>
+      <button class="link" id="reset" type="button">New chat</button>
+    </div>
+  </header>
+  <div id="log" aria-live="polite">
+    <p class="hint">Ask whether an item can be returned, or start a return. Have your order ID (for example A1001) and the email on the order ready.</p>
+  </div>
+  <form id="form">
+    <label for="input" class="hint" style="position:absolute; left:-9999px">Message</label>
+    <textarea id="input" rows="1" placeholder="Type your message" maxlength="2000" required></textarea>
+    <button id="send">Send</button>
+  </form>
+</main>
+<script>
+const KEY = "returns-conversation-id";
+const log = document.getElementById("log"), form = document.getElementById("form"),
+      input = document.getElementById("input"), send = document.getElementById("send"),
+      statusEl = document.getElementById("status");
+const LABELS = { customer: "You", bot: "Assistant", human: "Support team" };
+let conversationId = null, pollTimer = null;
+try { conversationId = localStorage.getItem(KEY); } catch {}
+
+function render(view) {
+  conversationId = view.conversation_id;
+  try { localStorage.setItem(KEY, conversationId); } catch {}
+  log.replaceChildren();
+  for (const m of view.transcript) {
+    const div = document.createElement("div");
+    div.className = "msg " + m.role;
+    const who = document.createElement("small");
+    who.textContent = LABELS[m.role] || m.role;
+    div.append(who, document.createTextNode(m.text));
+    log.append(div);
+  }
+  log.scrollTop = log.scrollHeight;
+  const escalated = view.status === "escalated";
+  statusEl.textContent = escalated ? "Waiting for support team" : "Assistant";
+  statusEl.classList.toggle("escalated", escalated);
+  clearInterval(pollTimer);
+  if (escalated) pollTimer = setInterval(refresh, 4000);
+}
+
+async function refresh() {
+  if (!conversationId) return;
+  const res = await fetch("/api/conversations/" + encodeURIComponent(conversationId));
+  if (res.ok) render(await res.json());
+  else if (res.status === 404) { try { localStorage.removeItem(KEY); } catch {} conversationId = null; }
+}
+
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const message = input.value.trim();
+  if (!message) return;
+  send.disabled = true; input.value = "";
+  const pending = document.createElement("p");
+  pending.className = "hint"; pending.textContent = "Assistant is typing…";
+  log.append(pending); log.scrollTop = log.scrollHeight;
+  try {
+    const res = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversation_id: conversationId, message }) });
+    if (!res.ok) throw new Error(res.status);
+    render(await res.json());
+  } catch {
+    pending.textContent = "Message could not be sent. Please try again.";
+    input.value = message;
+  } finally { send.disabled = false; input.focus(); }
+});
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+});
+document.getElementById("reset").addEventListener("click", () => {
+  try { localStorage.removeItem(KEY); } catch {}
+  location.reload();
+});
+refresh();
+</script>
+</body>
+</html>

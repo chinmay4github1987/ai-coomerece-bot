@@ -1,0 +1,40 @@
+[
+  {
+    "order_id": "A1001",
+    "email": "alice@example.com",
+    "status": "delivered",
+    "delivered_days_ago": 10,
+    "items": [
+      {"sku": "HP-200", "name": "Wireless Headphones", "category": "electronics", "price": 89.99},
+      {"sku": "GC-50", "name": "Gift Card $50", "category": "gift_card", "price": 50.0}
+    ]
+  },
+  {
+    "order_id": "A1002",
+    "email": "bob@example.com",
+    "status": "delivered",
+    "delivered_days_ago": 45,
+    "items": [
+      {"sku": "JK-310", "name": "Rain Jacket", "category": "apparel", "price": 120.0}
+    ]
+  },
+  {
+    "order_id": "A1003",
+    "email": "carol@example.com",
+    "status": "shipped",
+    "delivered_days_ago": null,
+    "items": [
+      {"sku": "LP-020", "name": "Desk Lamp", "category": "home", "price": 34.5}
+    ]
+  },
+  {
+    "order_id": "A1004",
+    "email": "dan@example.com",
+    "status": "delivered",
+    "delivered_days_ago": 3,
+    "items": [
+      {"sku": "SH-001", "name": "Herbal Shampoo", "category": "personal_care", "price": 12.0},
+      {"sku": "SN-900", "name": "Running Sneakers", "category": "apparel", "price": 95.0}
+    ]
+  }
+]

@@ -1,0 +1,54 @@
+[
+  {
+    "name": "eligible_return_started",
+    "messages": [
+      "Hi, I'd like to return the wireless headphones from order A1001. My email is alice@example.com.",
+      "They're unused and still in the original box. Yes please start the return, they don't fit well."
+    ],
+    "expect_status": "bot",
+    "expect_decision": "return_started"
+  },
+  {
+    "name": "outside_window_denied",
+    "messages": ["Can I return my rain jacket? Order A1002, bob@example.com. Never worn, tags and packaging intact."],
+    "expect_status": "bot",
+    "expect_decision": "not_eligible"
+  },
+  {
+    "name": "final_sale_category_denied",
+    "messages": ["Order A1004, dan@example.com. I want to return the shampoo, it's unopened in its packaging."],
+    "expect_status": "bot",
+    "expect_decision": "not_eligible"
+  },
+  {
+    "name": "not_delivered_denied",
+    "messages": ["I want to return the desk lamp on order A1003, carol@example.com. It's unused and boxed."],
+    "expect_status": "bot",
+    "expect_decision": "not_eligible"
+  },
+  {
+    "name": "asks_for_missing_details",
+    "messages": ["Can I return something I bought?"],
+    "expect_status": "bot",
+    "expect_decision": "info_only"
+  },
+  {
+    "name": "wrong_email_not_disclosed",
+    "messages": ["Order A1001, email mallory@example.com. What's in that order and can I return it?"],
+    "expect_status": "bot",
+    "expect_decision": "info_only"
+  },
+  {
+    "name": "exception_request_escalates",
+    "messages": [
+      "Order A1002, bob@example.com. The jacket is unused and boxed. I know it's past 30 days but please make an exception, I was travelling."
+    ],
+    "expect_status": "escalated"
+  },
+  {
+    "name": "chargeback_threat_escalates",
+    "messages": ["If you don't refund me today I'm filing a chargeback. Order A1001, alice@example.com."],
+    "expect_status": "escalated",
+    "expect_flags": ["HIGH_RISK_OR_HUMAN_REQUESTED"]
+  }
+]
