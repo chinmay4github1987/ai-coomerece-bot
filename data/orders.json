@@ -1,40 +1,11 @@
 [
-  {
-    "order_id": "A1001",
-    "email": "alice@example.com",
-    "status": "delivered",
-    "delivered_days_ago": 10,
-    "items": [
-      {"sku": "HP-200", "name": "Wireless Headphones", "category": "electronics", "price": 89.99},
-      {"sku": "GC-50", "name": "Gift Card $50", "category": "gift_card", "price": 50.0}
-    ]
-  },
-  {
-    "order_id": "A1002",
-    "email": "bob@example.com",
-    "status": "delivered",
-    "delivered_days_ago": 45,
-    "items": [
-      {"sku": "JK-310", "name": "Rain Jacket", "category": "apparel", "price": 120.0}
-    ]
-  },
-  {
-    "order_id": "A1003",
-    "email": "carol@example.com",
-    "status": "shipped",
-    "delivered_days_ago": null,
-    "items": [
-      {"sku": "LP-020", "name": "Desk Lamp", "category": "home", "price": 34.5}
-    ]
-  },
-  {
-    "order_id": "A1004",
-    "email": "dan@example.com",
-    "status": "delivered",
-    "delivered_days_ago": 3,
-    "items": [
-      {"sku": "SH-001", "name": "Herbal Shampoo", "category": "personal_care", "price": 12.0},
-      {"sku": "SN-900", "name": "Running Sneakers", "category": "apparel", "price": 95.0}
-    ]
-  }
+  {"order_id": "A1001", "email": "alice@example.com", "status": "delivered", "delivered_days_ago": 10, "items": [{"sku": "HP-200", "name": "Wireless Headphones", "category": "electronics", "price": 89.99}, {"sku": "GC-50", "name": "Gift Card $50", "category": "gift_card", "price": 50.0}]},
+  {"order_id": "A1002", "email": "bob@example.com", "status": "delivered", "delivered_days_ago": 45, "items": [{"sku": "JK-310", "name": "Rain Jacket", "category": "apparel", "price": 120.0}]},
+  {"order_id": "A1003", "email": "carol@example.com", "status": "shipped", "delivered_days_ago": null, "items": [{"sku": "LP-020", "name": "Desk Lamp", "category": "home", "price": 34.5}]},
+  {"order_id": "A1004", "email": "dan@example.com", "status": "delivered", "delivered_days_ago": 3, "items": [{"sku": "SH-001", "name": "Herbal Shampoo", "category": "personal_care", "price": 12.0}, {"sku": "SN-900", "name": "Running Sneakers", "category": "apparel", "price": 95.0}]},
+  {"order_id": "A1005", "email": "erin@example.com", "status": "delivered", "delivered_days_ago": 29, "items": [{"sku": "TB-450", "name": "Bluetooth Speaker", "category": "electronics", "price": 59.99}]},
+  {"order_id": "A1006", "email": "frank@example.com", "status": "delivered", "delivered_days_ago": 31, "items": [{"sku": "BK-120", "name": "Hardcover Cookbook", "category": "books", "price": 28.0}]},
+  {"order_id": "A1007", "email": "grace@example.com", "status": "delivered", "delivered_days_ago": 5, "items": [{"sku": "CF-300", "name": "Coffee Beans 1kg", "category": "perishable", "price": 24.0}, {"sku": "MG-012", "name": "Ceramic Mug Set", "category": "home", "price": 32.0}, {"sku": "WT-777", "name": "Smart Watch", "category": "electronics", "price": 199.0}]},
+  {"order_id": "A1008", "email": "henry@example.com", "status": "processing", "delivered_days_ago": null, "items": [{"sku": "KB-880", "name": "Mechanical Keyboard", "category": "electronics", "price": 129.0}]},
+  {"order_id": "A1009", "email": "ivy@example.com", "status": "delivered", "delivered_days_ago": 14, "items": [{"sku": "DR-560", "name": "Summer Dress", "category": "final_sale", "price": 45.0}, {"sku": "BG-220", "name": "Leather Backpack", "category": "accessories", "price": 150.0}]}
 ]

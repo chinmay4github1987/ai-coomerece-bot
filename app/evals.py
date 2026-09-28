@@ -1,4 +1,8 @@
-"""Pass/fail evals run on every agent turn. Any failure raises its flag and escalates to a human."""
+"""Guardrails as pass/fail evals. Any failure raises its flag and escalates to a human.
+
+Input guardrails screen the customer's message before the agent runs; a failure skips the model call.
+Output evals check the agent's turn before its reply may be sent.
+"""
 
 import re
 from dataclasses import asdict, dataclass
@@ -17,6 +21,11 @@ PROMISE_PATTERN = re.compile(
     r"refund(ed)? (today|now|immediately|right away|within \d+))\b",
     re.IGNORECASE,
 )
+INJECTION_PATTERN = re.compile(
+    r"\b((ignore|disregard|forget|override)\b.{0,30}\b(instructions|rules|prompt|policy)|system prompt|"
+    r"you are now|developer mode|jailbreak|pretend (to be|you are))\b",
+    re.IGNORECASE,
+)
 EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w-]+\.[\w.]+")
 CARD_PATTERN = re.compile(r"\b(?:\d[ -]?){13,16}\b")
 
@@ -33,6 +42,34 @@ def _result(name: str, passed: bool, flag: str, detail: str) -> EvalResult:
     return EvalResult(name, passed, None if passed else flag, detail)
 
 
+# --- input guardrails: run on the customer's message before the agent ---------
+
+def redact_input(text: str) -> str:
+    """Card numbers are removed before the message is stored or sent to the model."""
+    return CARD_PATTERN.sub("[card number removed]", text)
+
+
+def customer_risk(user_text: str) -> EvalResult:
+    match = RISK_PATTERN.search(user_text)
+    return _result("customer_risk", match is None, "HIGH_RISK_OR_HUMAN_REQUESTED",
+                   "no risk terms" if match is None else f"customer said '{match.group(0)}'")
+
+
+def prompt_injection(user_text: str) -> EvalResult:
+    match = INJECTION_PATTERN.search(user_text)
+    return _result("prompt_injection", match is None, "PROMPT_INJECTION",
+                   "no injection attempt" if match is None else f"customer said '{match.group(0)}'")
+
+
+INPUT_EVALS = (customer_risk, prompt_injection)
+
+
+def run_input_evals(user_text: str) -> list[EvalResult]:
+    return [ev(user_text) for ev in INPUT_EVALS]
+
+
+# --- output evals: run on the agent's turn before its reply is sent ----------
+
 def agent_completed(conv, user_text, turn: TurnResult) -> EvalResult:
     ok = turn.error is None and turn.final is not None
     return _result("agent_completed", ok, "AGENT_FAILURE", "final_answer produced" if ok else (turn.error or "no answer"))
@@ -42,12 +79,6 @@ def agent_confident(conv, user_text, turn: TurnResult) -> EvalResult:
     ok = not turn.final or turn.final["decision"] != "needs_human"
     return _result("agent_confident", ok, "AGENT_REQUESTED_HUMAN",
                    "agent handled the request" if ok else "agent asked for a human")
-
-
-def customer_risk(conv, user_text, turn: TurnResult) -> EvalResult:
-    match = RISK_PATTERN.search(user_text)
-    return _result("customer_risk", match is None, "HIGH_RISK_OR_HUMAN_REQUESTED",
-                   "no risk terms" if match is None else f"customer said '{match.group(0)}'")
 
 
 def decision_grounded(conv: Conversation, user_text, turn: TurnResult) -> EvalResult:
@@ -93,7 +124,7 @@ def no_pii_leak(conv, user_text, turn: TurnResult) -> EvalResult:
                    "no personal data in reply" if match is None else "reply contains an email or card number")
 
 
-EVALS = (agent_completed, agent_confident, customer_risk, decision_grounded,
+EVALS = (agent_completed, agent_confident, decision_grounded,
          action_authorized, no_unsupported_promises, no_pii_leak)
 
 

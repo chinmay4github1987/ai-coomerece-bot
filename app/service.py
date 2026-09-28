@@ -1,9 +1,9 @@
-"""Chat flow: agent turn -> evals -> reply to customer, or hand off to the human support queue."""
+"""Chat flow: input guardrails -> agent turn -> output evals -> reply to customer, or hand off to the human support queue."""
 
 import logging
 
-from app.agent import ReturnsAgent
-from app.evals import as_dicts, run_evals
+from app.agent import ReturnsAgent, TurnResult
+from app.evals import as_dicts, redact_input, run_evals, run_input_evals
 from app.store import Conversation, Escalation, Store, now_iso
 
 log = logging.getLogger(__name__)
@@ -19,6 +19,7 @@ class ChatService:
 
     def handle_customer_message(self, conversation_id: str | None, text: str) -> Conversation:
         conv = self.store.get_or_create(conversation_id)
+        text = redact_input(text)
         with conv.lock:
             conv.say("customer", text)
             if conv.status == "escalated":
@@ -26,8 +27,14 @@ class ChatService:
                 conv.messages.append({"role": "user", "content": text})
                 return conv
 
-            turn = self.agent.run_turn(conv, text)
-            results = run_evals(conv, text, turn)
+            results = run_input_evals(text)
+            if all(r.passed for r in results):
+                turn = self.agent.run_turn(conv, text)
+                results += run_evals(conv, text, turn)
+            else:
+                # Blocked before the model: keep the agent's history complete, but don't call it.
+                conv.messages.append({"role": "user", "content": text})
+                turn = TurnResult()
             flags = [r.flag for r in results if not r.passed]
             conv.eval_log.append({"at": now_iso(), "customer_message": text, "passed": not flags,
                                   "flags": flags, "evals": as_dicts(results), "tool_calls": turn.tool_calls,

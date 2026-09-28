@@ -30,6 +30,10 @@ class ReplyIn(BaseModel):
 
 
 def create_app(client=None, support_token: str | None = None) -> FastAPI:
+    if client is None and os.environ.get("DEMO_MODE") == "1":
+        from app.demo_client import DemoClient
+        client = DemoClient()
+        logging.getLogger(__name__).warning("DEMO_MODE=1: using the offline scripted client, not Claude")
     if client is None:
         import anthropic
         client = anthropic.Anthropic()
